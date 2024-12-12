@@ -32,6 +32,14 @@
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+#define JS_VALUE_CAST
+#define JS_VALUE_CONST_CAST
+#else
+#define JS_VALUE_CAST (JSValue)
+#define JS_VALUE_CONST_CAST (JSValueConst)
+#endif
+
 #if defined(__GNUC__) || defined(__clang__)
 #define js_likely(x)          __builtin_expect(!!(x), 1)
 #define js_unlikely(x)        __builtin_expect(!!(x), 0)
@@ -215,8 +223,13 @@ typedef struct JSValue {
 #define JS_VALUE_GET_FLOAT64(v) ((v).u.float64)
 #define JS_VALUE_GET_PTR(v) ((v).u.ptr)
 
+#ifdef _MSC_VER
+static inline JSValue JS_MKVAL(int64_t tag, int val) { JSValue ret; ret.u.int32 = val; ret.tag = tag; return ret; }
+static inline JSValue JS_MKPTR(int64_t tag, void* p) { JSValue ret; ret.u.ptr = p; ret.tag = tag; return ret; }
+#else
 #define JS_MKVAL(tag, val) (JSValue){ (JSValueUnion){ .int32 = val }, tag }
 #define JS_MKPTR(tag, p) (JSValue){ (JSValueUnion){ .ptr = p }, tag }
+#endif
 
 #define JS_TAG_IS_FLOAT64(tag) ((unsigned)(tag) == JS_TAG_FLOAT64)
 
@@ -672,7 +685,7 @@ static inline JSValue JS_DupValue(JSContext *ctx, JSValueConst v)
         JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
         p->ref_count++;
     }
-    return (JSValue)v;
+    return JS_VALUE_CAST v;
 }
 
 static inline JSValue JS_DupValueRT(JSRuntime *rt, JSValueConst v)
@@ -681,7 +694,7 @@ static inline JSValue JS_DupValueRT(JSRuntime *rt, JSValueConst v)
         JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
         p->ref_count++;
     }
-    return (JSValue)v;
+    return JS_VALUE_CAST v;
 }
 
 JS_BOOL JS_StrictEq(JSContext *ctx, JSValueConst op1, JSValueConst op2);

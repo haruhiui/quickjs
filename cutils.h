@@ -29,11 +29,21 @@
 #include <string.h>
 #include <inttypes.h>
 
+#ifdef _MSC_VER
+#include <windows.h>
+#define likely(x)       x
+#define unlikely(x)     x
+#define force_inline __forceinline
+#define no_inline __declspec(noinline)
+#define __maybe_unused
+#define alloca _alloca
+#else
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 #define force_inline inline __attribute__((always_inline))
 #define no_inline __attribute__((noinline))
 #define __maybe_unused __attribute__((unused))
+#endif
 
 #define xglue(x, y) x ## y
 #define glue(x, y) xglue(x, y)
@@ -149,17 +159,27 @@ static inline int ctz64(uint64_t a)
     return __builtin_ctzll(a);
 }
 
-struct __attribute__((packed)) packed_u64 {
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#define PACKED
+#else
+#define PACKED __attribute__((packed))
+#endif
+struct PACKED packed_u64 {
     uint64_t v;
 };
 
-struct __attribute__((packed)) packed_u32 {
+struct PACKED packed_u32 {
     uint32_t v;
 };
 
-struct __attribute__((packed)) packed_u16 {
+struct PACKED packed_u16 {
     uint16_t v;
 };
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
+#undef PACKED
 
 static inline uint64_t get_u64(const uint8_t *tab)
 {
@@ -282,8 +302,15 @@ static inline int dbuf_put_u64(DynBuf *s, uint64_t val)
 {
     return dbuf_put(s, (uint8_t *)&val, 8);
 }
-int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
-                                                      const char *fmt, ...);
+
+#if defined(__GNUC__) || defined(__clang__)
+#define FMT_HACK __attribute__((format(printf, 2, 3)))
+#else
+#define FMT_HACK
+#endif
+int FMT_HACK dbuf_printf(DynBuf *s, const char *fmt, ...);
+#undef FMT_HACK
+
 void dbuf_free(DynBuf *s);
 static inline BOOL dbuf_error(DynBuf *s) {
     return s->error;
